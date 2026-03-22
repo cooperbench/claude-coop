@@ -4,11 +4,13 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import { deriveScope } from "../session/scope.ts";
 import { generateSummary } from "../session/summary.ts";
 import { registerPeer, updatePeerStatus, heartbeat } from "../db/peers.ts";
+import { getClient } from "../db/client.ts";
 import { HEARTBEAT_INTERVAL_MS } from "../config.ts";
 import { listPeersTool } from "./tools/list_peers.ts";
 import { sendMessageTool } from "./tools/send_message.ts";
 import { checkInboxTool } from "./tools/check_inbox.ts";
 import { setSummaryTool } from "./tools/set_summary.ts";
+import type { Message } from "../types.ts";
 
 const tools = [listPeersTool, sendMessageTool, checkInboxTool, setSummaryTool];
 
@@ -16,13 +18,10 @@ async function main(): Promise<void> {
   const scope = deriveScope();
   const summary = generateSummary();
 
-  // Register this session as online
   await registerPeer(scope.full, summary);
 
-  // Heartbeat to stay online
   const heartbeatInterval = setInterval(() => heartbeat(scope.full), HEARTBEAT_INTERVAL_MS);
 
-  // Mark offline on exit
   async function shutdown(): Promise<void> {
     clearInterval(heartbeatInterval);
     await updatePeerStatus(scope.full, "offline");
@@ -31,11 +30,34 @@ async function main(): Promise<void> {
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 
-  // MCP server
   const server = new Server(
     { name: "coop", version: "0.1.0" },
-    { capabilities: { tools: {} } }
+    {
+      capabilities: {
+        tools: {},
+        experimental: { "claude/channel": {} },
+      },
+    }
   );
+
+  // Subscribe to inbound messages via Supabase Realtime and push into Claude via channel
+  getClient()
+    .channel(`inbox:${scope.full}`)
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "messages", filter: `to_scope=eq.${scope.full}` },
+      async (payload) => {
+        const msg = payload.new as Message;
+        await server.notification({
+          method: "notifications/claude/channel",
+          params: {
+            content: `Message from ${msg.from_scope}:\n${msg.body}`,
+            meta: { from_scope: msg.from_scope, message_id: msg.id },
+          },
+        });
+      }
+    )
+    .subscribe();
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: tools.map((t) => ({
