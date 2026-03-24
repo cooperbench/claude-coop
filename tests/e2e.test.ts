@@ -122,9 +122,8 @@ describe("coop E2E", () => {
       await expect(sendMessage(OTHER_SCOPE, "not-a-valid-scope!!", "hi")).rejects.toThrow("Invalid scope");
     });
 
-    it("sends to wildcard scope without error", async () => {
-      const msg = await sendMessage(OTHER_SCOPE, "akhatua2/*", "broadcast");
-      expect(msg.to_scope).toBe("akhatua2/*");
+    it("rejects send to scope not in visible_peers", async () => {
+      await expect(sendMessage(TEST_SCOPE, "stranger/repo@othermachine", "hi")).rejects.toThrow();
     });
   });
 });
