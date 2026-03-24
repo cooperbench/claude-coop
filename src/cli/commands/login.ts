@@ -54,9 +54,14 @@ export async function login(): Promise<void> {
         })
         .then(({ data, error }) => {
           if (error) { server.close(); reject(error); return; }
-          Bun.spawn(["open", data.url]);
-          console.log(`\nOpening browser for authentication...`);
-          console.log(`If it didn't open, visit:\n\n  ${data.url}\n`);
+          const openCmd = process.platform === "darwin" ? "open" : "xdg-open";
+          try {
+            Bun.spawn([openCmd, data.url], { stderr: "ignore" });
+            console.log(`\nOpening browser for authentication...`);
+            console.log(`If it didn't open, visit:\n\n  ${data.url}\n`);
+          } catch {
+            console.log(`\nOpen this URL in a browser to authenticate:\n\n  ${data.url}\n`);
+          }
         });
     });
 
