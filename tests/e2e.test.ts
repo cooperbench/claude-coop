@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { registerSquadMember, updateSquadStatus, listSquad, updateSquadSummary } from "../src/db/squad.ts";
-import { sendMessage, getInbox, markRead } from "../src/db/messages.ts";
+import { sendMessage, getInbox, markRead, upsertThreadMembers, getThreadMembers, listActiveThreads } from "../src/db/messages.ts";
 import { getClient } from "../src/db/client.ts";
 
 const TEST_SCOPE = `akhatua2/coop-e2e-test@arpanet-test`;
@@ -17,8 +17,11 @@ async function isAuthenticated(): Promise<boolean> {
   return !!user;
 }
 
+const TEST_THREAD = "e2e-test-thread";
+
 async function cleanup() {
   const client = getClient();
+  await client.from("thread_members").delete().eq("thread", TEST_THREAD);
   await client.from("messages").delete().in("from_scope", [TEST_SCOPE, OTHER_SCOPE]);
   await client.from("messages").delete().in("to_scope", [TEST_SCOPE, OTHER_SCOPE, "akhatua2/*"]);
   await client.from("squad").delete().in("scope", [TEST_SCOPE, OTHER_SCOPE]);
@@ -121,6 +124,62 @@ describe("coop E2E", () => {
 
     it("rejects send to scope not in visible_peers", async () => {
       await expect(sendMessage(TEST_SCOPE, "stranger/repo@othermachine", "hi")).rejects.toThrow();
+    });
+
+    it("stores thread on message", async () => {
+      const msg = await sendMessage(OTHER_SCOPE, TEST_SCOPE, "threaded hello", "my-thread");
+      expect(msg.thread).toBe("my-thread");
+    });
+  });
+
+  describe("threads", () => {
+    beforeAll(async () => {
+      await registerSquadMember(TEST_SCOPE, "thread test");
+      await registerSquadMember(OTHER_SCOPE, "thread other");
+    });
+
+    it("upsertThreadMembers registers members", async () => {
+      await upsertThreadMembers(TEST_THREAD, [TEST_SCOPE, OTHER_SCOPE], TEST_SCOPE);
+      const members = await getThreadMembers(TEST_THREAD, TEST_SCOPE);
+      expect(members).toContain(OTHER_SCOPE);
+    });
+
+    it("getThreadMembers excludes self", async () => {
+      await upsertThreadMembers(TEST_THREAD, [TEST_SCOPE, OTHER_SCOPE], TEST_SCOPE);
+      const members = await getThreadMembers(TEST_THREAD, TEST_SCOPE);
+      expect(members).not.toContain(TEST_SCOPE);
+    });
+
+    it("upsert is idempotent — no duplicates on re-add", async () => {
+      await upsertThreadMembers(TEST_THREAD, [TEST_SCOPE, OTHER_SCOPE], TEST_SCOPE);
+      await upsertThreadMembers(TEST_THREAD, [TEST_SCOPE, OTHER_SCOPE], TEST_SCOPE);
+      const members = await getThreadMembers(TEST_THREAD, TEST_SCOPE);
+      const unique = new Set(members);
+      expect(unique.size).toBe(members.length);
+    });
+
+    it("add appends new member to existing thread", async () => {
+      const THIRD_SCOPE = "akhatua2/coop-e2e-third@arpanet-test";
+      await upsertThreadMembers(TEST_THREAD, [TEST_SCOPE, OTHER_SCOPE], TEST_SCOPE);
+      await upsertThreadMembers(TEST_THREAD, [THIRD_SCOPE], TEST_SCOPE);
+      const members = await getThreadMembers(TEST_THREAD, TEST_SCOPE);
+      expect(members).toContain(OTHER_SCOPE);
+      expect(members).toContain(THIRD_SCOPE);
+    });
+
+    it("listActiveThreads shows thread for member", async () => {
+      await upsertThreadMembers(TEST_THREAD, [TEST_SCOPE, OTHER_SCOPE], TEST_SCOPE);
+      const threads = await listActiveThreads(TEST_SCOPE);
+      const found = threads.find((t) => t.thread === TEST_THREAD);
+      expect(found).toBeDefined();
+      expect(found?.participants).toContain(OTHER_SCOPE);
+    });
+
+    it("listActiveThreads excludes self from participants", async () => {
+      await upsertThreadMembers(TEST_THREAD, [TEST_SCOPE, OTHER_SCOPE], TEST_SCOPE);
+      const threads = await listActiveThreads(TEST_SCOPE);
+      const found = threads.find((t) => t.thread === TEST_THREAD);
+      expect(found?.participants).not.toContain(TEST_SCOPE);
     });
   });
 });

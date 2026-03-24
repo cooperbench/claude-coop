@@ -39,6 +39,7 @@ create table messages (
   from_scope text not null,
   to_scope text not null,
   body text not null,
+  thread text,
   read boolean not null default false,
   created_at timestamptz not null default now()
 );
@@ -123,6 +124,50 @@ create policy "view received grants" on grants
 -- users_public: readable by all authenticated users
 create policy "read users" on users_public
   for select using (auth.role() = 'authenticated');
+
+-- Thread membership (source of truth for who is in each thread)
+create table thread_members (
+  thread text not null,
+  scope text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  added_by text not null,
+  added_at timestamptz not null default now(),
+  primary key (thread, scope)
+);
+
+alter table thread_members enable row level security;
+
+-- Only the authenticated user can insert rows they own
+create policy "add thread members" on thread_members
+  for insert with check (user_id = auth.uid());
+
+-- RPC function to insert thread members atomically (bypasses upsert+RLS PostgREST issue)
+create or replace function add_thread_members(p_thread text, p_scopes text[], p_added_by text)
+returns void language sql security definer as $$
+  insert into thread_members (thread, scope, user_id, added_by)
+  select p_thread, unnest(p_scopes), auth.uid(), p_added_by
+  on conflict (thread, scope) do nothing;
+$$;
+
+-- Only the authenticated user can delete rows they own
+create policy "remove thread members" on thread_members
+  for delete using (user_id = auth.uid());
+
+-- Helper to check thread membership without triggering recursive RLS
+create or replace function is_thread_member(p_thread text, p_user_id uuid)
+returns boolean language sql security definer as $$
+  select exists (
+    select 1 from thread_members tm
+    join squad s on s.scope = tm.scope
+    where tm.thread = p_thread and s.user_id = p_user_id
+  );
+$$;
+
+-- You can read all members of a thread if your scope is already in it
+create policy "read thread members" on thread_members
+  for select using (
+    is_thread_member(thread, auth.uid())
+  );
 
 -- Enable Realtime for messages
 alter publication supabase_realtime add table messages;

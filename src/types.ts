@@ -15,6 +15,7 @@ export type Message = {
   from_scope: string;
   to_scope: string; // exact scope or wildcard e.g. "arpan/*"
   body: string;
+  thread: string | null;
   read: boolean;
   created_at: string;
 };

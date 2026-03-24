@@ -56,12 +56,13 @@ async function main(): Promise<void> {
       { event: "INSERT", schema: "public", table: "messages", filter: `to_scope=eq.${scope.full}` },
       async (payload) => {
         const msg = payload.new as Message;
-        notify("coop", `${msg.from_scope}: ${msg.body}`);
+        const threadPrefix = msg.thread ? `[thread: ${msg.thread}] ` : "";
+        notify("coop", `${threadPrefix}${msg.from_scope}: ${msg.body}`);
         await server.notification({
           method: "notifications/claude/channel",
           params: {
-            content: `Message from ${msg.from_scope}:\n${msg.body}`,
-            meta: { from_scope: msg.from_scope, message_id: msg.id },
+            content: `${threadPrefix}Message from ${msg.from_scope}:\n${msg.body}`,
+            meta: { from_scope: msg.from_scope, message_id: msg.id, thread: msg.thread ?? undefined },
           },
         });
       }
@@ -91,7 +92,7 @@ async function main(): Promise<void> {
         result = await listSquadTool.handler(scope.full);
         break;
       case "send_message":
-        result = await sendMessageTool.handler(args as { to: string | string[]; body: string }, scope.full);
+        result = await sendMessageTool.handler(args as { to?: string | string[]; body: string; thread?: string; add?: string[] }, scope.full);
         break;
       case "set_summary":
         result = await setSummaryTool.handler(args as { summary: string }, scope.full);
