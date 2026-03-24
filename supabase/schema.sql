@@ -55,7 +55,7 @@ create table grants (
 );
 
 -- View: all squad visible to the current user
-create or replace view visible_squad with (security_invoker = true) as
+create or replace view visible_squad with (security_invoker = false) as
 select p.*
 from squad p
 where
@@ -71,15 +71,6 @@ where
         or (g.scope_pattern like '%/*' and p.scope like replace(g.scope_pattern, '*', '%'))
       )
   );
-
--- Auto-mark squad offline if last_seen > 2 minutes ago
-create or replace function mark_stale_squad_offline()
-returns void language sql security definer as $$
-  update squad
-  set status = 'offline'
-  where status = 'online'
-    and last_seen < now() - interval '2 minutes';
-$$;
 
 -- RLS
 alter table squad enable row level security;

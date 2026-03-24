@@ -1,14 +1,12 @@
 import { getClient } from "./client.ts";
-import type { Grant } from "../types.ts";
 
 const SCOPE_PATTERN_RE = /^[a-zA-Z0-9_.-]+\/([\*]|[a-zA-Z0-9_.-]+(@[a-zA-Z0-9_.-]+)?)$/;
 
-export async function grantAccess(granteeUsername: string, scopePattern: string): Promise<Grant> {
+export async function grantAccess(granteeUsername: string, scopePattern: string): Promise<void> {
   if (!SCOPE_PATTERN_RE.test(scopePattern)) {
     throw new Error(`Invalid scope pattern: ${scopePattern}. Use format username/repo@machine or username/*`);
   }
 
-  // Resolve grantee username to user_id
   const { data: grantee, error: userError } = await getClient()
     .from("users_public")
     .select("id")
@@ -17,14 +15,11 @@ export async function grantAccess(granteeUsername: string, scopePattern: string)
 
   if (userError || !grantee) throw new Error(`User not found: ${granteeUsername}`);
 
-  const { data, error } = await getClient()
+  const { error } = await getClient()
     .from("grants")
-    .insert({ grantee_user_id: grantee.id, scope_pattern: scopePattern })
-    .select()
-    .single();
+    .insert({ grantee_user_id: grantee.id, scope_pattern: scopePattern });
 
   if (error) throw new Error(`Failed to create grant: ${error.message}`);
-  return data as Grant;
 }
 
 export async function revokeAccess(granteeUsername: string, scopePattern: string): Promise<void> {
@@ -45,12 +40,36 @@ export async function revokeAccess(granteeUsername: string, scopePattern: string
   if (error) throw new Error(`Failed to revoke grant: ${error.message}`);
 }
 
-export async function listGrants(): Promise<Grant[]> {
+export type GrantDisplay = {
+  scope_pattern: string;
+  grantee_username: string;
+  created_at: string;
+};
+
+export async function listGrants(): Promise<GrantDisplay[]> {
   const { data, error } = await getClient()
     .from("grants")
-    .select("*")
+    .select("scope_pattern, grantee_user_id, created_at")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`Failed to list grants: ${error.message}`);
-  return data as Grant[];
+  if (!data || data.length === 0) return [];
+
+  const rows = data as { scope_pattern: string; grantee_user_id: string; created_at: string }[];
+  const ids = [...new Set(rows.map((r) => r.grantee_user_id))];
+
+  const { data: users, error: usersError } = await getClient()
+    .from("users_public")
+    .select("id, username")
+    .in("id", ids);
+
+  if (usersError) throw new Error(`Failed to resolve usernames: ${usersError.message}`);
+
+  const usernameById = new Map((users as { id: string; username: string }[]).map((u) => [u.id, u.username]));
+
+  return rows.map((r) => ({
+    scope_pattern: r.scope_pattern,
+    grantee_username: usernameById.get(r.grantee_user_id) ?? r.grantee_user_id,
+    created_at: r.created_at,
+  }));
 }

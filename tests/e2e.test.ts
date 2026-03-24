@@ -8,6 +8,7 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { registerSquadMember, updateSquadStatus, listSquad, updateSquadSummary } from "../src/db/squad.ts";
 import { sendMessage, getInbox, markRead, upsertThreadMembers, getThreadMembers, listActiveThreads } from "../src/db/messages.ts";
 import { getClient } from "../src/db/client.ts";
+import { PEER_TIMEOUT_MS } from "../src/config.ts";
 
 const TEST_SCOPE = `akhatua2/coop-e2e-test@arpanet-test`;
 const OTHER_SCOPE = `akhatua2/coop-e2e-other@arpanet-test`;
@@ -72,6 +73,18 @@ describe("coop E2E", () => {
       const members = await listSquad();
       const found = members.some((p) => p.scope === TEST_SCOPE);
       expect(found).toBe(true);
+    });
+
+    it("listSquad shows stale peer as offline even if DB status is online", async () => {
+      await registerSquadMember(TEST_SCOPE, "stale test");
+      // Force last_seen to be beyond the timeout window
+      const staleTime = new Date(Date.now() - PEER_TIMEOUT_MS - 5_000).toISOString();
+      await getClient().from("squad").update({ last_seen: staleTime }).eq("scope", TEST_SCOPE);
+
+      const members = await listSquad();
+      const member = members.find((m) => m.scope === TEST_SCOPE);
+      expect(member).toBeDefined();
+      expect(member?.status).toBe("offline");
     });
   });
 

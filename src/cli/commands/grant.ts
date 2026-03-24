@@ -19,6 +19,6 @@ export async function grants(): Promise<void> {
   }
 
   for (const g of list) {
-    console.log(`${g.scope_pattern}  →  ${g.grantee_user_id}`);
+    console.log(`${g.scope_pattern}  →  ${g.grantee_username}`);
   }
 }

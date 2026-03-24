@@ -20,14 +20,6 @@ export type Message = {
   created_at: string;
 };
 
-export type Grant = {
-  id: string;
-  grantor_user_id: string;
-  grantee_user_id: string;
-  scope_pattern: string; // e.g. "arpan/cooperbench:main" or "arpan/*"
-  created_at: string;
-};
-
 export type AuthSession = {
   access_token: string;
   refresh_token: string;
