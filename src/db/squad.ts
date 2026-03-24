@@ -1,5 +1,11 @@
 import { getClient } from "./client.ts";
+import { PEER_TIMEOUT_MS } from "../config.ts";
 import type { SquadMember, PeerStatus } from "../types.ts";
+
+/** Pure function — returns "offline" if last_seen is older than PEER_TIMEOUT_MS. */
+export function effectiveStatus(status: PeerStatus, lastSeen: string): PeerStatus {
+  return Date.now() - new Date(lastSeen).getTime() > PEER_TIMEOUT_MS ? "offline" : status;
+}
 
 export async function registerSquadMember(scope: string, summary: string | null): Promise<SquadMember> {
   const client = getClient();
@@ -59,7 +65,26 @@ export async function listSquad(): Promise<SquadMember[]> {
     .order("last_seen", { ascending: false });
 
   if (error) throw new Error(`Failed to list squad: ${error.message}`);
-  return data as SquadMember[];
+  return (data as SquadMember[])
+    .map((m) => ({ ...m, status: effectiveStatus(m.status, m.last_seen) }))
+    .sort((a, b) => {
+      if (a.status !== b.status) return a.status === "online" ? -1 : 1;
+      return new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime();
+    });
+}
+
+export async function listOwnScopes(): Promise<SquadMember[]> {
+  const { data: { user }, error: userError } = await getClient().auth.getUser();
+  if (userError || !user) throw new Error("Not authenticated. Run `claude-coop login` first.");
+
+  const { data, error } = await getClient()
+    .from("squad")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("last_seen", { ascending: false });
+
+  if (error) throw new Error(`Failed to list own scopes: ${error.message}`);
+  return (data as SquadMember[]).map((m) => ({ ...m, status: effectiveStatus(m.status, m.last_seen) }));
 }
 
 export async function getSquadMemberStatus(scope: string): Promise<PeerStatus | null> {
@@ -71,8 +96,5 @@ export async function getSquadMemberStatus(scope: string): Promise<PeerStatus | 
 
   if (error || !data) return null;
   const row = data as { status: PeerStatus; last_seen: string };
-
-  // Treat as offline if last heartbeat was more than 2 minutes ago
-  const stale = Date.now() - new Date(row.last_seen).getTime() > 2 * 60 * 1000;
-  return stale ? "offline" : row.status;
+  return effectiveStatus(row.status, row.last_seen);
 }

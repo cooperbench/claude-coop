@@ -12,7 +12,7 @@ function gitOutput(cmd: string): string | null {
   }
 }
 
-function parseRepoName(remoteUrl: string): string {
+export function parseRepoName(remoteUrl: string): string {
   // Handles both SSH (git@github.com:org/repo.git) and HTTPS (https://github.com/org/repo.git)
   // Returns only the repo name, not the org
   const match = remoteUrl.match(/\/([^/]+?)(?:\.git)?$/);
@@ -39,6 +39,13 @@ export function deriveScope(): ScopeInfo {
     : basename(process.cwd()) || "unknown";
   const username = getUsername();
   const machine = getMachineName();
+
+  if (username === "unknown") {
+    process.stderr.write("[claude-coop] warning: could not read username from auth — run `claude-coop login`\n");
+  }
+  if (!remote) {
+    process.stderr.write("[claude-coop] warning: no git remote found, using directory name as repo\n");
+  }
 
   return {
     username,

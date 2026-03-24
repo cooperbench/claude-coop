@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { sendMessage, upsertThreadMembers, getThreadMembers } from "../../db/messages.ts";
 import { getSquadMemberStatus } from "../../db/squad.ts";
 
@@ -33,14 +32,6 @@ Three usage patterns:
     },
     required: ["body"],
   },
-  schema: z.object({
-    to: z.union([z.string(), z.array(z.string())]).optional(),
-    body: z.string(),
-    thread: z.string().optional(),
-    add: z.array(z.string()).optional(),
-  }).refine((a) => a.to !== undefined || a.thread !== undefined, {
-    message: "Either 'to' or 'thread' must be provided",
-  }),
   async handler(args: { to?: string | string[]; body: string; thread?: string; add?: string[] }, fromScope: string): Promise<string> {
     let scopes: string[];
 

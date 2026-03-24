@@ -7,7 +7,7 @@ export async function list(): Promise<void> {
   const members = await listSquad();
 
   if (members.length === 0) {
-    console.log(dim("No squad members found."));
+    console.log(dim("No one around yet. Share your scope and invite some folks!"));
     return;
   }
 

@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { updateSquadSummary } from "../../db/squad.ts";
 
 export const setSummaryTool = {
@@ -11,7 +10,6 @@ export const setSummaryTool = {
     },
     required: ["summary"],
   },
-  schema: z.object({ summary: z.string() }),
   async handler(args: { summary: string }, scope: string): Promise<string> {
     await updateSquadSummary(scope, args.summary);
     return `Summary updated.`;

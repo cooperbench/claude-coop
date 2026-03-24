@@ -42,7 +42,7 @@ async function exchangeAndPersist(
   });
 
   const username = sessionData.session.user.user_metadata["user_name"] as string;
-  console.log(`\n  \x1b[32m✓\x1b[0m Logged in as ${username}\n`);
+  console.log(`\n  \x1b[32m✓\x1b[0m Hey ${username}, you're in!\n`);
 }
 
 /**
@@ -82,8 +82,8 @@ async function loginLocal(
         .then(({ data, error }: { data: any; error: any }) => {
           if (error) { server.close(); reject(error); return; }
           openBrowser(data.url);
-          console.log(`\nOpening browser for authentication...`);
-          console.log(`If it didn't open, visit:\n\n  ${data.url}\n`);
+          console.log(`\nOpening your browser... hang tight!`);
+          console.log(`Browser not opening? Copy this link:\n\n  ${data.url}\n`);
         });
     });
 
@@ -106,8 +106,8 @@ async function loginHeadless(
   });
   if (error) throw error;
 
-  console.log(`\nOpen this URL in a browser to authenticate:\n\n  ${data.url}\n`);
-  console.log(`After authorizing, you'll see a code. Copy it and paste it here.\n`);
+  console.log(`\nNo browser? No problem. Open this on any device:\n\n  ${data.url}\n`);
+  console.log(`After you authorize, copy the code and paste it below.\n`);
 
   const input = await readLine("  Paste code: ");
   if (!input) throw new Error("No code provided");

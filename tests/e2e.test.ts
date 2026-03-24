@@ -7,13 +7,20 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { registerSquadMember, updateSquadStatus, listSquad, updateSquadSummary } from "../src/db/squad.ts";
 import { sendMessage, getInbox, markRead, upsertThreadMembers, getThreadMembers, listActiveThreads } from "../src/db/messages.ts";
+import { grantAccess, revokeAccess, listGrants, checkUserExists } from "../src/db/grants.ts";
 import { getClient } from "../src/db/client.ts";
+import { PEER_TIMEOUT_MS } from "../src/config.ts";
 
 const TEST_SCOPE = `akhatua2/coop-e2e-test@arpanet-test`;
 const OTHER_SCOPE = `akhatua2/coop-e2e-other@arpanet-test`;
+const GRANT_TEST_SCOPE = "akhatua2/coop-e2e-grant-test@arpanet-test";
+
+// Resolved in beforeAll from the authenticated session — no hardcoded usernames
+let authedUsername = "";
 
 async function isAuthenticated(): Promise<boolean> {
   const { data: { user } } = await getClient().auth.getUser();
+  if (user) authedUsername = user.user_metadata.user_name as string;
   return !!user;
 }
 
@@ -25,6 +32,8 @@ async function cleanup() {
   await client.from("messages").delete().in("from_scope", [TEST_SCOPE, OTHER_SCOPE]);
   await client.from("messages").delete().in("to_scope", [TEST_SCOPE, OTHER_SCOPE, "akhatua2/*"]);
   await client.from("squad").delete().in("scope", [TEST_SCOPE, OTHER_SCOPE]);
+  await client.from("grants").delete().eq("scope_pattern", GRANT_TEST_SCOPE);
+  await client.from("squad").delete().eq("scope", GRANT_TEST_SCOPE);
 }
 
 describe("coop E2E", () => {
@@ -72,6 +81,18 @@ describe("coop E2E", () => {
       const members = await listSquad();
       const found = members.some((p) => p.scope === TEST_SCOPE);
       expect(found).toBe(true);
+    });
+
+    it("listSquad shows stale peer as offline even if DB status is online", async () => {
+      await registerSquadMember(TEST_SCOPE, "stale test");
+      // Force last_seen to be beyond the timeout window
+      const staleTime = new Date(Date.now() - PEER_TIMEOUT_MS - 5_000).toISOString();
+      await getClient().from("squad").update({ last_seen: staleTime }).eq("scope", TEST_SCOPE);
+
+      const members = await listSquad();
+      const member = members.find((m) => m.scope === TEST_SCOPE);
+      expect(member).toBeDefined();
+      expect(member?.status).toBe("offline");
     });
   });
 
@@ -180,6 +201,49 @@ describe("coop E2E", () => {
       const threads = await listActiveThreads(TEST_SCOPE);
       const found = threads.find((t) => t.thread === TEST_THREAD);
       expect(found?.participants).not.toContain(TEST_SCOPE);
+    });
+  });
+
+  describe("grants", () => {
+    it("grants access successfully", async () => {
+      await expect(grantAccess(authedUsername, GRANT_TEST_SCOPE)).resolves.toBeUndefined();
+    });
+
+    it("granting the same access twice does not throw (idempotent)", async () => {
+      await grantAccess(authedUsername, GRANT_TEST_SCOPE);
+      await expect(grantAccess(authedUsername, GRANT_TEST_SCOPE)).resolves.toBeUndefined();
+    });
+
+    it("listGrants shows the grant with username not UUID", async () => {
+      await grantAccess(authedUsername, GRANT_TEST_SCOPE);
+      const grants = await listGrants();
+      const found = grants.find((g) => g.scope_pattern === GRANT_TEST_SCOPE);
+      expect(found).toBeDefined();
+      expect(found?.grantee_username).toBe(authedUsername);
+    });
+
+    it("revokes access successfully", async () => {
+      await grantAccess(authedUsername, GRANT_TEST_SCOPE);
+      await expect(revokeAccess(authedUsername, GRANT_TEST_SCOPE)).resolves.toBeUndefined();
+      const grants = await listGrants();
+      const found = grants.find((g) => g.scope_pattern === GRANT_TEST_SCOPE);
+      expect(found).toBeUndefined();
+    });
+
+    it("checkUserExists returns true for authenticated user", async () => {
+      expect(await checkUserExists(authedUsername)).toBe(true);
+    });
+
+    it("checkUserExists returns false for unknown user", async () => {
+      expect(await checkUserExists("no-such-user-xyz-99999")).toBe(false);
+    });
+
+    it("throws on unknown user", async () => {
+      await expect(grantAccess("no-such-user-xyz", GRANT_TEST_SCOPE)).rejects.toThrow("User not found");
+    });
+
+    it("throws on invalid scope pattern", async () => {
+      await expect(grantAccess(authedUsername, "not a valid scope!!")).rejects.toThrow("Invalid scope pattern");
     });
   });
 });

@@ -15,7 +15,7 @@ export async function install(): Promise<void> {
   try {
     execSync("claude --version", { stdio: "pipe" });
   } catch {
-    console.error(`  ${red("✗")} Claude Code CLI not found. Install it first: https://docs.anthropic.com/en/docs/claude-code`);
+    console.error(`  ${red("✗")} Looks like Claude Code isn't installed yet. Grab it here: https://docs.anthropic.com/en/docs/claude-code`);
     process.exit(1);
   }
 
@@ -32,10 +32,10 @@ export async function install(): Promise<void> {
   } catch (err) {
     process.stdout.write("\n");
     const detail = err instanceof Error && "stderr" in err ? String((err as any).stderr).trim() : "";
-    console.error(`  ${red("✗")} Failed to register MCP server.${detail ? `\n  ${detail}` : ""}`);
+    console.error(`  ${red("✗")} Hmm, couldn't register with Claude Code.${detail ? `\n  ${detail}` : ""}`);
     process.exit(1);
   }
 
-  process.stdout.write(`\r  ${green("✓")} Registered with Claude Code\n`);
-  console.log(`\n  ${dim("Restart Claude Code to activate claude-coop.")}\n`);
+  process.stdout.write(`\r  ${green("✓")} All set! claude-coop is registered.\n`);
+  console.log(`\n  ${dim("Restart Claude Code to activate it.")}\n`);
 }
