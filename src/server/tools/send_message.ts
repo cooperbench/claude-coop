@@ -16,7 +16,8 @@ export const sendMessageTool = {
   schema: z.object({ to_scope: z.string(), body: z.string() }),
   async handler(args: { to_scope: string; body: string }, fromScope: string): Promise<string> {
     const status = await getSquadMemberStatus(args.to_scope);
-    if (status !== "online") return `${args.to_scope} is offline`;
+    if (status === null) return `${args.to_scope} not found — they may need to grant you access first`;
+    if (status === "offline") return `${args.to_scope} is offline`;
 
     await sendMessage(fromScope, args.to_scope, args.body);
     return `Message sent to ${args.to_scope}`;

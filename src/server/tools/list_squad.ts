@@ -7,14 +7,15 @@ export const listSquadTool = {
     type: "object" as const,
     properties: {},
   },
-  async handler(): Promise<string> {
+  async handler(currentScope: string): Promise<string> {
     const members = await listSquad();
     if (members.length === 0) return "No squad members found.";
 
     return members
       .map((m) => {
         const status = m.status === "online" ? "online" : "offline";
-        return `${m.scope} [${status}]${m.summary ? ` — ${m.summary}` : ""}`;
+        const you = m.scope === currentScope ? " (you)" : "";
+        return `${m.scope} [${status}]${you}${m.summary ? ` — ${m.summary}` : ""}`;
       })
       .join("\n");
   },

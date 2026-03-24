@@ -7,6 +7,11 @@ export async function registerSquadMember(scope: string, summary: string | null)
   const { data: { user }, error: userError } = await client.auth.getUser();
   if (userError || !user) throw new Error("Not authenticated. Run `coop login` first.");
 
+  const username = user.user_metadata.user_name as string;
+  if (!scope.startsWith(`${username}/`)) {
+    throw new Error(`Scope must start with your username: ${username}/`);
+  }
+
   const { data, error } = await client
     .from("squad")
     .upsert({ user_id: user.id, scope, status: "online", summary, last_seen: new Date().toISOString() }, { onConflict: "scope" })

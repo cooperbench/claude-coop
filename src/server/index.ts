@@ -10,6 +10,7 @@ import { HEARTBEAT_INTERVAL_MS } from "../config.ts";
 import { listSquadTool } from "./tools/list_squad.ts";
 import { sendMessageTool } from "./tools/send_message.ts";
 import { setSummaryTool } from "./tools/set_summary.ts";
+import { myScopeTool } from "./tools/my_scope.ts";
 import type { Message } from "../types.ts";
 
 function notify(title: string, body: string): void {
@@ -19,7 +20,7 @@ function notify(title: string, body: string): void {
   } catch { /* non-macOS or notification denied */ }
 }
 
-const tools = [listSquadTool, sendMessageTool, setSummaryTool];
+const tools = [myScopeTool, listSquadTool, sendMessageTool, setSummaryTool];
 
 async function main(): Promise<void> {
   const scope = deriveScope();
@@ -83,8 +84,11 @@ async function main(): Promise<void> {
     let result: string;
 
     switch (tool.name) {
+      case "my_scope":
+        result = myScopeTool.handler(scope.full);
+        break;
       case "list_squad":
-        result = await listSquadTool.handler();
+        result = await listSquadTool.handler(scope.full);
         break;
       case "send_message":
         result = await sendMessageTool.handler(args as { to_scope: string; body: string }, scope.full);

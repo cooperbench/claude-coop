@@ -1,7 +1,13 @@
 import { getClient } from "./client.ts";
 import type { Grant } from "../types.ts";
 
+const SCOPE_PATTERN_RE = /^[a-zA-Z0-9_.-]+\/([\*]|[a-zA-Z0-9_.-]+(@[a-zA-Z0-9_.-]+)?)$/;
+
 export async function grantAccess(granteeUsername: string, scopePattern: string): Promise<Grant> {
+  if (!SCOPE_PATTERN_RE.test(scopePattern)) {
+    throw new Error(`Invalid scope pattern: ${scopePattern}. Use format username/repo@machine or username/*`);
+  }
+
   // Resolve grantee username to user_id
   const { data: grantee, error: userError } = await getClient()
     .from("users_public")
