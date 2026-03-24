@@ -19,7 +19,10 @@ export async function grantAccess(granteeUsername: string, scopePattern: string)
     .from("grants")
     .insert({ grantee_user_id: grantee.id, scope_pattern: scopePattern });
 
-  if (error) throw new Error(`Failed to create grant: ${error.message}`);
+  if (error) {
+    if (error.code === "23505") return; // already granted — idempotent
+    throw new Error(`Failed to create grant: ${error.message}`);
+  }
 }
 
 export async function revokeAccess(granteeUsername: string, scopePattern: string): Promise<void> {

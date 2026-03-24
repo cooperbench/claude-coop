@@ -10,7 +10,7 @@ import { inbox } from "./commands/inbox.ts";
 
 const program = new Command("claude-coop")
   .description("Peer messaging for Claude Code sessions")
-  .version("0.1.8");
+  .version("0.1.9");
 
 program.command("login").description("Authenticate via GitHub").action(login);
 
@@ -25,8 +25,8 @@ program
   .action((opts) => inbox({ all: opts.all }));
 
 program
-  .command("grant <user> <scope>")
-  .description("Grant a user access to one of your scopes")
+  .command("grant <user> [scope]")
+  .description("Grant a user access to your scopes (interactive if scope omitted)")
   .action(grant);
 
 program

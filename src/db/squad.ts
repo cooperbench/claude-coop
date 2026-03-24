@@ -73,6 +73,20 @@ export async function listSquad(): Promise<SquadMember[]> {
     });
 }
 
+export async function listOwnScopes(): Promise<SquadMember[]> {
+  const { data: { user }, error: userError } = await getClient().auth.getUser();
+  if (userError || !user) throw new Error("Not authenticated. Run `claude-coop login` first.");
+
+  const { data, error } = await getClient()
+    .from("squad")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("last_seen", { ascending: false });
+
+  if (error) throw new Error(`Failed to list own scopes: ${error.message}`);
+  return (data as SquadMember[]).map((m) => ({ ...m, status: effectiveStatus(m.status, m.last_seen) }));
+}
+
 export async function getSquadMemberStatus(scope: string): Promise<PeerStatus | null> {
   const { data, error } = await getClient()
     .from("visible_squad")
