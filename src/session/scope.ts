@@ -24,7 +24,7 @@ function getUsername(): string {
     // Supabase stores session under "sb-<project-ref>-auth-token" key
     const sessionKey = Object.keys(store).find((k) => k.includes("-auth-token"));
     if (!sessionKey) return "unknown";
-    const session = JSON.parse(store[sessionKey]) as AuthSession;
+    const session = JSON.parse(store[sessionKey]!) as AuthSession;
     return session.user.user_metadata.user_name;
   } catch {
     return "unknown";
