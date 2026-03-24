@@ -1,0 +1,4 @@
+.claude/
+tests/
+.env
+*.local
