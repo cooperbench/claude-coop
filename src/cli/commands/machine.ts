@@ -8,5 +8,5 @@ export function machineShow(): void {
 export function machineSet(name: string): void {
   mkdirSync(CONFIG_DIR, { recursive: true });
   writeFileSync(CONFIG_FILE, JSON.stringify({ machineName: name }, null, 2));
-  console.log(`Machine name set to: ${name}`);
+  console.log(`Machine name updated to "${name}"`);
 }

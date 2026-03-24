@@ -9,7 +9,7 @@ export async function whoami(): Promise<void> {
   const { data: { user } } = await getClient().auth.getUser();
 
   if (!user) {
-    console.log(`  ${red("✗")} Not logged in — run \`claude-coop login\``);
+    console.log(`  ${red("✗")} You're not logged in — run \`claude-coop login\` to get started.`);
     process.exit(1);
   }
 

@@ -22,7 +22,7 @@ export async function inbox({ all }: { all: boolean }): Promise<void> {
   const messages = await getInbox(scope.full, !all);
 
   if (messages.length === 0) {
-    console.log(dim(all ? "No messages." : "No unread messages."));
+    console.log(dim(all ? "Nothing here yet." : "You're all caught up!"));
     return;
   }
 
