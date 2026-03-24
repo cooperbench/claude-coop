@@ -1,4 +1,4 @@
-import { grantAccess, revokeAccess, listGrants, type GrantDisplay } from "../../db/grants.ts";
+import { grantAccess, revokeAccess, listGrants, checkUserExists, type GrantDisplay } from "../../db/grants.ts";
 
 /** Pure diff — exported for testing. */
 export function diffGrants(
@@ -24,6 +24,11 @@ const dim   = (s: string) => `\x1b[2m${s}\x1b[0m`;
 const red   = (s: string) => `\x1b[31m${s}\x1b[0m`;
 
 export async function grant(grantee: string, scopePattern?: string): Promise<void> {
+  if (!await checkUserExists(grantee)) {
+    console.error(`  ${red("✗")} User not found: ${grantee}`);
+    process.exit(1);
+  }
+
   // Fast path: scope provided directly
   if (scopePattern) {
     await grantAccess(grantee, scopePattern);

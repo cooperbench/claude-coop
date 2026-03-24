@@ -2,6 +2,15 @@ import { getClient } from "./client.ts";
 
 const SCOPE_PATTERN_RE = /^[a-zA-Z0-9_.-]+\/([\*]|[a-zA-Z0-9_.-]+(@[a-zA-Z0-9_.-]+)?)$/;
 
+export async function checkUserExists(username: string): Promise<boolean> {
+  const { data } = await getClient()
+    .from("users_public")
+    .select("id")
+    .eq("username", username)
+    .single();
+  return !!data;
+}
+
 export async function grantAccess(granteeUsername: string, scopePattern: string): Promise<void> {
   if (!SCOPE_PATTERN_RE.test(scopePattern)) {
     throw new Error(`Invalid scope pattern: ${scopePattern}. Use format username/repo@machine or username/*`);

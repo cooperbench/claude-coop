@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { registerSquadMember, updateSquadStatus, listSquad, updateSquadSummary } from "../src/db/squad.ts";
 import { sendMessage, getInbox, markRead, upsertThreadMembers, getThreadMembers, listActiveThreads } from "../src/db/messages.ts";
-import { grantAccess, revokeAccess, listGrants } from "../src/db/grants.ts";
+import { grantAccess, revokeAccess, listGrants, checkUserExists } from "../src/db/grants.ts";
 import { getClient } from "../src/db/client.ts";
 import { PEER_TIMEOUT_MS } from "../src/config.ts";
 
@@ -228,6 +228,14 @@ describe("coop E2E", () => {
       const grants = await listGrants();
       const found = grants.find((g) => g.scope_pattern === GRANT_TEST_SCOPE);
       expect(found).toBeUndefined();
+    });
+
+    it("checkUserExists returns true for authenticated user", async () => {
+      expect(await checkUserExists(authedUsername)).toBe(true);
+    });
+
+    it("checkUserExists returns false for unknown user", async () => {
+      expect(await checkUserExists("no-such-user-xyz-99999")).toBe(false);
     });
 
     it("throws on unknown user", async () => {
