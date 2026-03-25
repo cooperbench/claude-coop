@@ -30,7 +30,6 @@ describe("pickScope", () => {
   });
 
   it("returns the base scope when it exists but heartbeat is stale", () => {
-    // Status says online but heartbeat is stale — treat as dead
     const existing: ExistingScope[] = [
       { scope: base, status: "online", last_seen: stale() },
     ];
@@ -38,56 +37,55 @@ describe("pickScope", () => {
     expect(result).toBe(base);
   });
 
-  it("returns #2 when the base scope is alive", () => {
+  it("returns #2 (before @machine) when the base scope is alive", () => {
     const existing: ExistingScope[] = [
       { scope: base, status: "online", last_seen: fresh() },
     ];
     const result = pickScope(base, existing);
-    expect(result).toBe(`${base}#2`);
+    expect(result).toBe("arpan/coop#2@macbook");
   });
 
   it("returns #3 when base and #2 are both alive", () => {
     const existing: ExistingScope[] = [
       { scope: base, status: "online", last_seen: fresh() },
-      { scope: `${base}#2`, status: "online", last_seen: fresh() },
+      { scope: "arpan/coop#2@macbook", status: "online", last_seen: fresh() },
     ];
     const result = pickScope(base, existing);
-    expect(result).toBe(`${base}#3`);
+    expect(result).toBe("arpan/coop#3@macbook");
   });
 
   it("reuses #2 when #2 is offline and base is alive", () => {
     const existing: ExistingScope[] = [
       { scope: base, status: "online", last_seen: fresh() },
-      { scope: `${base}#2`, status: "offline", last_seen: stale() },
+      { scope: "arpan/coop#2@macbook", status: "offline", last_seen: stale() },
     ];
     const result = pickScope(base, existing);
-    expect(result).toBe(`${base}#2`);
+    expect(result).toBe("arpan/coop#2@macbook");
   });
 
   it("reuses #2 when #2 has stale heartbeat and base is alive", () => {
     const existing: ExistingScope[] = [
       { scope: base, status: "online", last_seen: fresh() },
-      { scope: `${base}#2`, status: "online", last_seen: stale() },
+      { scope: "arpan/coop#2@macbook", status: "online", last_seen: stale() },
     ];
     const result = pickScope(base, existing);
-    expect(result).toBe(`${base}#2`);
+    expect(result).toBe("arpan/coop#2@macbook");
   });
 
   it("fills gaps — reuses #2 when #2 is dead but #3 is alive", () => {
     const existing: ExistingScope[] = [
       { scope: base, status: "online", last_seen: fresh() },
-      { scope: `${base}#2`, status: "offline", last_seen: stale() },
-      { scope: `${base}#3`, status: "online", last_seen: fresh() },
+      { scope: "arpan/coop#2@macbook", status: "offline", last_seen: stale() },
+      { scope: "arpan/coop#3@macbook", status: "online", last_seen: fresh() },
     ];
     const result = pickScope(base, existing);
-    expect(result).toBe(`${base}#2`);
+    expect(result).toBe("arpan/coop#2@macbook");
   });
 
   it("prefers the base scope over a dead #2", () => {
-    // Both base and #2 are dead — should take base
     const existing: ExistingScope[] = [
       { scope: base, status: "offline", last_seen: stale() },
-      { scope: `${base}#2`, status: "offline", last_seen: stale() },
+      { scope: "arpan/coop#2@macbook", status: "offline", last_seen: stale() },
     ];
     const result = pickScope(base, existing);
     expect(result).toBe(base);

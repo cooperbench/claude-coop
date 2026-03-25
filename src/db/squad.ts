@@ -88,12 +88,24 @@ export async function listOwnScopes(): Promise<SquadMember[]> {
 }
 
 export async function findScopesWithPrefix(baseScope: string): Promise<{ scope: string; status: PeerStatus; last_seen: string }[]> {
-  // Escape LIKE wildcards (% and _) in the base scope
-  const escapedBase = baseScope.replace(/%/g, "\\%").replace(/_/g, "\\_");
+  // Format is "user/repo@machine" — numbered variants are "user/repo#N@machine"
+  // Match the base scope itself plus any "user/repo#%@machine" variants
+  const atIdx = baseScope.lastIndexOf("@");
+  const escaped = baseScope.replace(/%/g, "\\%").replace(/_/g, "\\_");
+
+  let likePattern: string;
+  if (atIdx === -1) {
+    likePattern = `${escaped}#%`;
+  } else {
+    const prefix = escaped.slice(0, atIdx);
+    const suffix = escaped.slice(atIdx);
+    likePattern = `${prefix}#%${suffix}`;
+  }
+
   const { data, error } = await getClient()
     .from("squad")
     .select("scope, status, last_seen")
-    .or(`scope.eq.${baseScope},scope.like.${escapedBase}#%`);
+    .or(`scope.eq.${baseScope},scope.like.${likePattern}`);
 
   if (error) throw new Error(`Failed to query scopes: ${error.message}`);
   return (data ?? []) as { scope: string; status: PeerStatus; last_seen: string }[];
