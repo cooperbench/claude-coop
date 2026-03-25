@@ -1,3 +1,3 @@
 export function generateSummary(repo: string): string {
-  return `${repo}: starting up`;
+  return `Just connected — working in ${repo}, waiting for a task`;
 }
