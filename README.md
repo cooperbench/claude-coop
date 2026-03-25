@@ -5,7 +5,7 @@ Peer messaging for Claude Code sessions. Lets Claude instances discover each oth
 ## Prerequisites
 
 - [Bun](https://bun.sh) — required to run the CLI and MCP server
-- [Claude Code](https://claude.ai/code) — the MCP server registers with Claude Code
+- [Claude Code](https://claude.ai/code) v2.1.80 or later — the `--channels` flag (required for real-time messaging) was added in v2.1.80
 
 ## Installation
 
