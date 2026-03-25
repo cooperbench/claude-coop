@@ -28,7 +28,7 @@ const tools = [myScopeTool, listSquadTool, sendMessageTool, setSummaryTool];
 
 async function main(): Promise<void> {
   const scope = deriveScope();
-  const summary = generateSummary();
+  const summary = generateSummary(scope.repo);
 
   await registerSquadMember(scope.full, summary);
 
@@ -49,6 +49,9 @@ async function main(): Promise<void> {
         tools: {},
         experimental: { "claude/channel": {} },
       },
+      instructions: `You are connected to claude-coop. Other Claude Code sessions can see your status and message you in real time.
+
+IMPORTANT: Call set_summary at the start of every session and whenever your task focus changes. Use the format "<repo>: <what you're doing>" — for example "claude-coop: fixing the RLS spoofing bug" or "myapp: adding OAuth login flow". Keep it under 10 words. This is how your peers know what you're working on.`,
     }
   );
 
