@@ -6,13 +6,13 @@ export const CONFIG_DIR = resolve(homedir(), ".claude-coop");
 export const AUTH_FILE = resolve(CONFIG_DIR, "auth.json");
 export const CONFIG_FILE = resolve(CONFIG_DIR, "config.json");
 
-// Bundled Supabase config — anon key is safe to ship publicly, RLS enforces access control
+// Bundled Supabase config — publishable key is safe to ship publicly, RLS enforces access control
 const BUNDLED_SUPABASE_URL = "https://jqmmsdeebveatufggbrx.supabase.co";
-const BUNDLED_SUPABASE_ANON_KEY = "sb_publishable_jat4plFkv2LIfKT7wAS7Jw_41iT0ZLr";
+const BUNDLED_SUPABASE_KEY = "sb_publishable_jat4plFkv2LIfKT7wAS7Jw_41iT0ZLr";
 
-// Allow env var override for development
+// Allow env var override for self-hosting
 export const SUPABASE_URL = process.env["COOP_SUPABASE_URL"] ?? BUNDLED_SUPABASE_URL;
-export const SUPABASE_ANON_KEY = process.env["COOP_SUPABASE_ANON_KEY"] ?? BUNDLED_SUPABASE_ANON_KEY;
+export const SUPABASE_ANON_KEY = process.env["COOP_SUPABASE_KEY"] ?? process.env["COOP_SUPABASE_ANON_KEY"] ?? BUNDLED_SUPABASE_KEY;
 
 type CoopConfig = {
   machineName?: string;

@@ -26,7 +26,7 @@ create trigger on_auth_user_created
 create table squad (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  scope text not null unique, -- e.g. "arpan/cooperbench:main#a3f"
+  scope text not null unique, -- e.g. "arpan/coop@macbook" or "arpan/coop#2@macbook"
   status text not null default 'online' check (status in ('online', 'offline')),
   summary text,
   last_seen timestamptz not null default now(),
@@ -49,7 +49,7 @@ create table grants (
   id uuid primary key default gen_random_uuid(),
   grantor_user_id uuid not null references auth.users(id) on delete cascade,
   grantee_user_id uuid not null references auth.users(id) on delete cascade,
-  scope_pattern text not null, -- e.g. "arpan/cooperbench:main" or "arpan/*"
+  scope_pattern text not null, -- e.g. "arpan/coop@macbook" or "arpan/*"
   created_at timestamptz not null default now(),
   unique (grantor_user_id, grantee_user_id, scope_pattern)
 );
@@ -148,9 +148,8 @@ create policy "remove thread members" on thread_members
 create or replace function is_thread_member(p_thread text, p_user_id uuid)
 returns boolean language sql security definer as $$
   select exists (
-    select 1 from thread_members tm
-    join squad s on s.scope = tm.scope
-    where tm.thread = p_thread and s.user_id = p_user_id
+    select 1 from thread_members
+    where thread = p_thread and user_id = p_user_id
   );
 $$;
 

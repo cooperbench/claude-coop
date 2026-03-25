@@ -70,3 +70,7 @@ claude-coop grant <their-username> yourusername/repo@machine  # one specific sco
 ```
 
 Once granted, your sessions appear in their `list_squad` and they can message you via `send_message`. Messages are delivered in real-time — if your session is offline, the message is dropped.
+
+## Self-hosting
+
+Want to run your own private instance? See the [self-hosting guide](docs/self-hosting.md).
